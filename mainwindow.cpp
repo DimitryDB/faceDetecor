@@ -5,11 +5,19 @@
 #include <QString>
 #include <QMessageBox>
 #include <QDebug>
+#include <QApplication>
+#include <QImage>
+#include <QPixmap>
 #include "mainwindow.h"
 
 
-MainWindow::MainWindow(QWidget *parent) {
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    fileMenu(nullptr),
+    capturer(nullptr)
+{
     initUi();
+    data_lock = new QMutex();
 }
 
 MainWindow::~MainWindow() {}
@@ -60,6 +68,8 @@ void MainWindow::createActions() {
     fileMenu->addAction(exitAction);
 
     connect(cameraInfoAction, SIGNAL(triggered(bool)), this, SLOT(cameraInfo()));
+    connect(exitAction, SIGNAL(triggered(bool)), QApplication::instance(), SLOT(quit()));
+    connect(openCameraAction, SIGNAL(triggered(bool)), this, SLOT(openCamera()));
 
 }
 void MainWindow::cameraInfo() {
@@ -74,5 +84,34 @@ void MainWindow::cameraInfo() {
     }
     QMessageBox::information(this, "Cameras", info);
 }
+void MainWindow::openCamera() {
+    if (capturer != nullptr) {
+        capturer->setRunning(false);
+        disconnect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+        connect(capturer, &CaptureThread::finished, capturer, &CaptureThread::deleteLater);
+    }
+    int camID = 0;
+    capturer = new CaptureThread(camID, data_lock);
+    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+    capturer->start();
+    mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
+}
+void MainWindow::updateFrame(cv::Mat *mat) {
+    data_lock->lock();
+    currentFrame = *mat;
+    data_lock->unlock();
+
+    QImage frame(currentFrame.data, currentFrame.cols, currentFrame.rows,
+                 static_cast<int>(currentFrame.step), QImage::Format_BGR888);
+    QPixmap image = QPixmap::fromImage(frame);
+    imageScene->clear();
+    imageView->resetTransform();
+    imageScene->addPixmap(image);
+    imageScene->update();
+    imageView->setSceneRect(image.rect());
+
+
+}
+
 
 

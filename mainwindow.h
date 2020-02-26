@@ -10,6 +10,11 @@
 #include <QCheckBox>
 #include <QListView>
 #include <QLabel>
+#include <QMutex>
+
+#include "opencv2/opencv.hpp"
+
+#include "captureThread.h"
 
 
 class MainWindow :public QMainWindow  {
@@ -20,6 +25,8 @@ public:
     ~MainWindow();
 private slots:
     void cameraInfo();
+    void openCamera();
+    void updateFrame(cv::Mat*);
 
 private:
     void initUi();
@@ -41,6 +48,10 @@ private:
     QAction *cameraInfoAction;
     QAction *openCameraAction;
     QAction *exitAction;
+
+    cv::Mat currentFrame;
+    QMutex *data_lock;
+    CaptureThread *capturer;
 };
 
 #endif // MAINWINDOW_H
