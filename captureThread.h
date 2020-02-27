@@ -8,6 +8,7 @@
 
 class CaptureThread : public QThread {
     Q_OBJECT
+
 public:
     CaptureThread(int camera, QMutex *lock);
     CaptureThread(QString videoPath, QMutex *lock);
@@ -18,13 +19,14 @@ protected:
 
 signals:
     void frameCaptured(cv::Mat *data);
+    void fpsChanged(float fps);
 private:
     bool running;
     int cameraID;
     QString videoPath;
     QMutex *data_lock;
     cv::Mat frame;
-
+    float fps;
 };
 
 

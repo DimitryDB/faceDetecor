@@ -16,17 +16,18 @@
 
 #include "captureThread.h"
 
-
 class MainWindow :public QMainWindow  {
     Q_OBJECT
 
 public:
     explicit MainWindow (QWidget *parent = nullptr);
     ~MainWindow();
+
 private slots:
     void cameraInfo();
     void openCamera();
     void updateFrame(cv::Mat*);
+    void updateFPS(float fps);
 
 private:
     void initUi();

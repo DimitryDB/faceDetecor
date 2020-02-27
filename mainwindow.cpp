@@ -28,6 +28,7 @@ void MainWindow::initUi() {
     fileMenu = menuBar()->addMenu("&File");
 
     QGridLayout *main_layout = new QGridLayout();
+
     imageScene = new QGraphicsScene(this);
     imageView = new QGraphicsView(imageScene);
     main_layout->addWidget(imageView, 0, 0, 12, 1);
@@ -93,6 +94,7 @@ void MainWindow::openCamera() {
     int camID = 0;
     capturer = new CaptureThread(camID, data_lock);
     connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
     capturer->start();
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
 }
@@ -109,9 +111,12 @@ void MainWindow::updateFrame(cv::Mat *mat) {
     imageScene->addPixmap(image);
     imageScene->update();
     imageView->setSceneRect(image.rect());
-
-
 }
+void MainWindow::updateFPS(float fps) {
+    mainStatusLabel->setText(QString("FPS of current camera is %1").
+                             arg(static_cast<int>(fps)));
+}
+
 
 
 
