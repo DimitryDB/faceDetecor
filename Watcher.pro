@@ -8,17 +8,19 @@ CONFIG += c++11
 
 HEADERS += \
         captureThread.h \
-        mainwindow.h
+        mainwindow.h \
+        utilites.h
 SOURCES += \
         captureThread.cpp \
         main.cpp \
         mainwindow.cpp \
+        utilites.cpp
 
 
 #OpenCV path
 unix: !mac {
        INCLUDEPATH += /usr/local/include/opencv4
-       LIBS += -L/usr/local/include/opencv4 -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_videoio
+       LIBS += -L/usr/local/include/opencv4 -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_videoio -lopencv_imgcodecs
    }
 unix: mac {
          INCLUDEPATH += /path/to/opencv/include/opencv4

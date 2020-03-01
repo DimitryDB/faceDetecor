@@ -11,6 +11,7 @@
 #include <QListView>
 #include <QLabel>
 #include <QMutex>
+#include <QStandardItemModel>
 
 #include "opencv2/opencv.hpp"
 
@@ -28,10 +29,14 @@ private slots:
     void openCamera();
     void updateFrame(cv::Mat*);
     void updateFPS(float fps);
+    void recordingStartStop();
+    void appendSavedVideo(QString name);
 
 private:
+    void populateSavedList();
     void initUi();
     void createActions();
+    int camID;
 
     QMenu *fileMenu;
 
@@ -50,8 +55,11 @@ private:
     QAction *openCameraAction;
     QAction *exitAction;
 
+    QStandardItemModel *listModel;
+
     cv::Mat currentFrame;
-    QMutex *data_lock;
+    QMutex *dataLock;
+    QMutex *camLock;
     CaptureThread *capturer;
 };
 
