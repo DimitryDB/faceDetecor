@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMutex>
 #include <QStandardItemModel>
+#include <QHBoxLayout>
 
 #include "opencv2/opencv.hpp"
 
@@ -27,17 +28,19 @@ public:
 private slots:
     void cameraInfo();
     void openCamera();
-    void closeCamera();
+    void openFile();
+    void closeVideoStream();
     void updateFrame(cv::Mat*);
     void updateFPS(float fps);
     void recordingStartStop();
     void appendSavedVideo(QString name);
-    void playVideo(const QModelIndex &index);
+    void playVideoFromLib(const QModelIndex &index);
 
 private:
     void populateSavedList();
     void initUi();
     void createActions();
+    void playCaptureSetup();
     int camID;
 
     QMenu *fileMenu;
@@ -52,10 +55,12 @@ private:
 
     QStatusBar *mainStatusBar;
     QLabel *mainStatusLabel;
+    QLabel *fpsStatusLabel;
 
     QAction *cameraInfoAction;
     QAction *openCameraAction;
-    QAction *closeCameraAction;
+    QAction *openFileAction;
+    QAction *closeVideoStreamAction;
     QAction *exitAction;
 
 

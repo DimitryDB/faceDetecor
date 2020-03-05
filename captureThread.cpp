@@ -14,7 +14,6 @@ CaptureThread::CaptureThread(QString videoPath, QMutex *lock) : running(false), 
                     videoPath(videoPath), data_lock(lock), camera_lock(nullptr), fps(0.0), cap(nullptr), playFile(true),
                     frame_width(0), frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
                     video_writer(nullptr)  {}
-
 void CaptureThread::run() {
     int wait;
     running = true;
@@ -64,13 +63,10 @@ void CaptureThread::run() {
         camera_lock->unlock();
     delete cap;
 }
-
 void CaptureThread::startSavingVideo(cv::Mat &firstFrame) {
     saved_video_name = Utilites::newSavedVideoName();
     QString cover = Utilites::getSavedVideoPath(saved_video_name, "jpg");
-
     cv::imwrite(cover.toStdString(), firstFrame);
-
     video_writer = new cv::VideoWriter(
                 Utilites::getSavedVideoPath(saved_video_name, "avi").toStdString(),
                 cv::VideoWriter::fourcc('M','J','P','G'),
@@ -78,7 +74,6 @@ void CaptureThread::startSavingVideo(cv::Mat &firstFrame) {
                 cv::Size(frame_width, frame_height));
     video_saving_status = STARTED;
 }
-
 void CaptureThread::stopSavingVideo() {
     video_saving_status = STOPPED;
     video_writer->release();

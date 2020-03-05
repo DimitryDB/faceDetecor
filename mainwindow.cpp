@@ -9,6 +9,7 @@
 #include <QPixmap>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFileDialog>
 
 #include "mainwindow.h"
 #include "utilites.h"
@@ -17,14 +18,11 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     camID(0),
     fileMenu(nullptr),
-    capturer(nullptr)
-
-{
+    capturer(nullptr) {
     initUi();
     dataLock = new QMutex();
     camLock = new QMutex();
 }
-
 MainWindow::~MainWindow() {
     camLock->try_lock();
     camLock->unlock();
@@ -33,7 +31,6 @@ MainWindow::~MainWindow() {
     delete camLock;
     delete dataLock;
 }
-
 void MainWindow::initUi() {
     this->resize(1000, 800);
 
@@ -72,7 +69,9 @@ void MainWindow::initUi() {
     //status bar
     mainStatusBar = statusBar();
     mainStatusLabel = new QLabel(mainStatusBar);
-    mainStatusBar->addPermanentWidget(mainStatusLabel);
+    fpsStatusLabel = new QLabel(mainStatusBar);
+    mainStatusBar->addPermanentWidget(fpsStatusLabel);
+    mainStatusBar->addWidget(mainStatusLabel);
     mainStatusLabel->setText("Watcher is Ready");
 
     connect(recordButton,SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
@@ -80,24 +79,31 @@ void MainWindow::initUi() {
 
     createActions();
     populateSavedList();
-
 }
-
 void MainWindow::createActions() {
     cameraInfoAction = new QAction("Camera &Information" ,this);
     fileMenu->addAction(cameraInfoAction);
-    openCameraAction = new QAction("&Open Camera" ,this);
+    openCameraAction = new QAction("Open &Camera" ,this);
     fileMenu->addAction(openCameraAction);
-    closeCameraAction = new QAction("&Close Camera" ,this);
-    fileMenu->addAction(closeCameraAction);
+    openFileAction = new QAction("Open &File" ,this);
+    fileMenu->addAction(openFileAction);
+    closeVideoStreamAction = new QAction("&Close Video Stream" ,this);
+    fileMenu->addAction(closeVideoStreamAction);
     exitAction = new QAction("E&xit" ,this);
     fileMenu->addAction(exitAction);
 
     connect(cameraInfoAction, SIGNAL(triggered(bool)), this, SLOT(cameraInfo()));
     connect(exitAction, SIGNAL(triggered(bool)), QApplication::instance(), SLOT(quit()));
     connect(openCameraAction, SIGNAL(triggered(bool)), this, SLOT(openCamera()));
-    connect(closeCameraAction, SIGNAL(triggered(bool)), this, SLOT(closeCamera()));
+    connect(closeVideoStreamAction, SIGNAL(triggered(bool)), this, SLOT(closeVideoStream()));
+    connect(openFileAction, SIGNAL(triggered(bool)), this, SLOT(openFile()));
 
+}
+void MainWindow::playCaptureSetup() {
+    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
+    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
+    capturer->start();
 }
 void MainWindow::cameraInfo() {
     QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
@@ -112,15 +118,27 @@ void MainWindow::cameraInfo() {
     QMessageBox::information(this, "Cameras", info);
 }
 void MainWindow::openCamera() {
-    closeCamera();
+    closeVideoStream();
     capturer = new CaptureThread(camID, dataLock, camLock);
-    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
-    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
-    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
-    capturer->start();
+    playCaptureSetup();
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
 }
-void MainWindow::closeCamera() {
+void MainWindow::openFile() {
+    QFileDialog dialog(this);
+    dialog.setWindowTitle("Open Video");
+    dialog.setFileMode(QFileDialog::ExistingFile);
+    dialog.setNameFilter(tr("Videos(*.avi)"));
+    QStringList filePaths;
+    if (dialog.exec()) {
+        filePaths = dialog.selectedFiles();
+        QString filePath = filePaths.at(0);
+        closeVideoStream();
+        capturer = new CaptureThread(filePath, dataLock);
+        playCaptureSetup();
+        mainStatusLabel->setText(QString("Playing video %1").arg(filePaths.at(0)));
+    }
+}
+void MainWindow::closeVideoStream() {
     if (capturer != nullptr) {
         capturer->setRunning(false);
         disconnect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
@@ -129,9 +147,9 @@ void MainWindow::closeCamera() {
         connect(capturer, &CaptureThread::finished, capturer, &CaptureThread::deleteLater);
         imageScene->clear();
         mainStatusLabel->setText("Watcher is Ready");
+        capturer = nullptr;
     }
 }
-
 void MainWindow::updateFrame(cv::Mat *mat) {
     dataLock->lock();
     currentFrame = *mat;
@@ -147,10 +165,9 @@ void MainWindow::updateFrame(cv::Mat *mat) {
     imageView->setSceneRect(image.rect());
 }
 void MainWindow::updateFPS(float fps) {
-    mainStatusLabel->setText(QString("FPS %1").
+    fpsStatusLabel->setText(QString("FPS %1").
                              arg(static_cast<int>(fps)));
 }
-
 void MainWindow::recordingStartStop() {
     QString text = recordButton->text();
     if (text == "Record" && capturer != nullptr) {
@@ -161,7 +178,6 @@ void MainWindow::recordingStartStop() {
         recordButton->setText("Record");
     }
 }
-
 void MainWindow::appendSavedVideo(QString name) {
     QString cover = Utilites::getSavedVideoPath(name, "jpg");
     QStandardItem *item = new QStandardItem;
@@ -171,19 +187,14 @@ void MainWindow::appendSavedVideo(QString name) {
     listModel->setData(index, name, Qt::DisplayRole);
     savedList->scrollTo(index);
 }
-
-void MainWindow::playVideo(const QModelIndex &index) {
+void MainWindow::playVideoFromLib(const QModelIndex &index) {
     QString filename =Utilites::getDataPath() + "/" + listModel->itemFromIndex(index)->text() + ".avi";
     //qDebug() << filename << "\n";
-    closeCamera();
+    closeVideoStream();
     capturer = new CaptureThread(filename, dataLock);
-    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
-    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
-    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
-    capturer->start();
+    playCaptureSetup();
     mainStatusLabel->setText(QString("Playing video %1").arg(filename));
 }
-
 void MainWindow::populateSavedList() {
     QDir movieDir( Utilites::getDataPath());
     QStringList filters;
@@ -198,8 +209,10 @@ void MainWindow::populateSavedList() {
         listModel->setData(index, file.baseName(), Qt::DisplayRole);
         savedList->scrollTo(index);
     }
-    connect(savedList, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(playVideo(const QModelIndex &)));
+    connect(savedList, SIGNAL(doubleClicked(const QModelIndex &)), this,
+                                            SLOT(playVideoFromLib(const QModelIndex &)));
 }
+
 
 
 

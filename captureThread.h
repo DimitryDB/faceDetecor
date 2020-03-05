@@ -50,7 +50,6 @@ private:
     VideoSavingStatus video_saving_status;
     QString saved_video_name;
     cv::VideoWriter *video_writer;
-
 };
 
 
