@@ -4,7 +4,6 @@
 #include <QCameraInfo>
 #include <QString>
 #include <QMessageBox>
-#include <QDebug>
 #include <QApplication>
 #include <QImage>
 #include <QPixmap>
@@ -27,9 +26,12 @@ MainWindow::MainWindow(QWidget *parent) :
 }
 
 MainWindow::~MainWindow() {
+    camLock->try_lock();
     camLock->unlock();
-    delete dataLock;
+    dataLock->try_lock();
+    dataLock->unlock();
     delete camLock;
+    delete dataLock;
 }
 
 void MainWindow::initUi() {

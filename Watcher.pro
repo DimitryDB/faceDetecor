@@ -24,10 +24,11 @@ unix: !mac {
    }
 unix: mac {
          INCLUDEPATH += /path/to/opencv/include/opencv4
-         LIBS += -L/path/to/opencv/lib -lopencv_world
+         LIBS += -L/path/to/opencv/lib -lopencv_world -lopencv_imgcodecs
      }
 win32 {
        INCLUDEPATH += C:\opencv\build\include
+       #LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347d
        LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347
    }
 

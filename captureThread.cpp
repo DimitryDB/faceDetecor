@@ -1,5 +1,5 @@
 #include <QElapsedTimer>
-#include <QDebug>
+
 #include <opencv2/imgproc.hpp>
 
 #include "captureThread.h"
@@ -16,7 +16,7 @@ CaptureThread::CaptureThread(QString videoPath, QMutex *lock) : running(false), 
                     video_writer(nullptr)  {}
 
 void CaptureThread::run() {
-    int wait, fps;
+    int wait;
     running = true;
     if (playFile) {
         cap = new cv::VideoCapture(videoPath.toStdString());
@@ -60,7 +60,7 @@ void CaptureThread::run() {
     }
     cap->release();
     running = false;
-    if (cameraID != -1)
+    if (!playFile)
         camera_lock->unlock();
     delete cap;
 }
@@ -68,6 +68,7 @@ void CaptureThread::run() {
 void CaptureThread::startSavingVideo(cv::Mat &firstFrame) {
     saved_video_name = Utilites::newSavedVideoName();
     QString cover = Utilites::getSavedVideoPath(saved_video_name, "jpg");
+
     cv::imwrite(cover.toStdString(), firstFrame);
 
     video_writer = new cv::VideoWriter(

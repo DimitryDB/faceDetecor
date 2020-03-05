@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QEventLoop>
 
+
 #include "utilites.h"
 
 
@@ -18,7 +19,7 @@ QString Utilites::getDataPath()
 QString Utilites::newSavedVideoName()
 {
     QDateTime time = QDateTime::currentDateTime();
-    return time.toString("yyyy-MM-dd+HH:mm:ss");
+    return time.toString("yyyy_MM_dd__HH_mm_ss");
 }
 
 QString Utilites::getSavedVideoPath(QString name, QString postfix)
