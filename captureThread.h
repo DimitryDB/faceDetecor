@@ -43,11 +43,14 @@ private:
     QMutex *camera_lock;
     cv::Mat frame;
     float fps;
+    cv::VideoCapture *cap;
+    bool playFile;
     //saving
     int frame_width, frame_height;
     VideoSavingStatus video_saving_status;
     QString saved_video_name;
     cv::VideoWriter *video_writer;
+
 };
 
 

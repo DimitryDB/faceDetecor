@@ -6,27 +6,36 @@
 #include "utilites.h"
 
 CaptureThread::CaptureThread(int camera, QMutex *lock, QMutex *cameraLock) : running(false), cameraID(camera),
-                    videoPath(""), data_lock(lock), camera_lock(cameraLock), fps(0.0), frame_width(0),
-                    frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
+                    videoPath(""), data_lock(lock), camera_lock(cameraLock), fps(0.0), cap(nullptr), playFile(false),
+                    frame_width(0), frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
                     video_writer(nullptr) {}
 
 CaptureThread::CaptureThread(QString videoPath, QMutex *lock) : running(false), cameraID(-1),
-                    videoPath(videoPath), data_lock(lock), camera_lock(nullptr), fps(0.0), frame_width(0),
-                    frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
-                    video_writer(nullptr) {}
+                    videoPath(videoPath), data_lock(lock), camera_lock(nullptr), fps(0.0), cap(nullptr), playFile(true),
+                    frame_width(0), frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
+                    video_writer(nullptr)  {}
 
 void CaptureThread::run() {
-    camera_lock->tryLock(500);
+    int wait, fps;
     running = true;
-    cv::VideoCapture cap(cameraID);
-    frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    if (playFile) {
+        cap = new cv::VideoCapture(videoPath.toStdString());
+        fps = cap->get(cv::CAP_PROP_FPS);
+        wait  = 1000/fps;
+    }
+    else {
+        camera_lock->tryLock(500);
+        cap = new cv::VideoCapture(cameraID);
+    }
+    frame_width = cap->get(cv::CAP_PROP_FRAME_WIDTH);
+    frame_height = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
+    //qDebug() << "fps " << fps << "\n";
     //qDebug() << "width " << frame_width << "height " << frame_height << "\n";
     cv::Mat tmp_frame;
     QElapsedTimer timer;
     while (running) {
         timer.start();
-        cap >> tmp_frame;
+        *cap >> tmp_frame;
         if (tmp_frame.empty())
             break;
 
@@ -41,13 +50,19 @@ void CaptureThread::run() {
         frame = tmp_frame;
         data_lock->unlock();
         qint64 elapsed = timer.elapsed();
-        fps = 1.0/(elapsed / 1000.0);
+        if (playFile)
+            msleep(wait - elapsed);
+        else {
+            fps = 1.0/(elapsed / 1000.0);
+        }
         emit fpsChanged(fps);
         emit frameCaptured(&frame);
     }
-    cap.release();
+    cap->release();
     running = false;
-    camera_lock->unlock();
+    if (cameraID != -1)
+        camera_lock->unlock();
+    delete cap;
 }
 
 void CaptureThread::startSavingVideo(cv::Mat &firstFrame) {

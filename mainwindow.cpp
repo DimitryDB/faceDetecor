@@ -75,8 +75,10 @@ void MainWindow::initUi() {
 
     connect(recordButton,SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
 
+
     createActions();
     populateSavedList();
+
 }
 
 void MainWindow::createActions() {
@@ -84,12 +86,15 @@ void MainWindow::createActions() {
     fileMenu->addAction(cameraInfoAction);
     openCameraAction = new QAction("&Open Camera" ,this);
     fileMenu->addAction(openCameraAction);
+    closeCameraAction = new QAction("&Close Camera" ,this);
+    fileMenu->addAction(closeCameraAction);
     exitAction = new QAction("E&xit" ,this);
     fileMenu->addAction(exitAction);
 
     connect(cameraInfoAction, SIGNAL(triggered(bool)), this, SLOT(cameraInfo()));
     connect(exitAction, SIGNAL(triggered(bool)), QApplication::instance(), SLOT(quit()));
     connect(openCameraAction, SIGNAL(triggered(bool)), this, SLOT(openCamera()));
+    connect(closeCameraAction, SIGNAL(triggered(bool)), this, SLOT(closeCamera()));
 
 }
 void MainWindow::cameraInfo() {
@@ -105,13 +110,7 @@ void MainWindow::cameraInfo() {
     QMessageBox::information(this, "Cameras", info);
 }
 void MainWindow::openCamera() {
-    if (capturer != nullptr) {
-        capturer->setRunning(false);
-        disconnect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
-        disconnect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
-        disconnect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
-        connect(capturer, &CaptureThread::finished, capturer, &CaptureThread::deleteLater);
-    }
+    closeCamera();
     capturer = new CaptureThread(camID, dataLock, camLock);
     connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
     connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
@@ -119,6 +118,18 @@ void MainWindow::openCamera() {
     capturer->start();
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
 }
+void MainWindow::closeCamera() {
+    if (capturer != nullptr) {
+        capturer->setRunning(false);
+        disconnect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+        disconnect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
+        disconnect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
+        connect(capturer, &CaptureThread::finished, capturer, &CaptureThread::deleteLater);
+        imageScene->clear();
+        mainStatusLabel->setText("Watcher is Ready");
+    }
+}
+
 void MainWindow::updateFrame(cv::Mat *mat) {
     dataLock->lock();
     currentFrame = *mat;
@@ -134,7 +145,7 @@ void MainWindow::updateFrame(cv::Mat *mat) {
     imageView->setSceneRect(image.rect());
 }
 void MainWindow::updateFPS(float fps) {
-    mainStatusLabel->setText(QString("FPS of current camera is %1").
+    mainStatusLabel->setText(QString("FPS %1").
                              arg(static_cast<int>(fps)));
 }
 
@@ -159,6 +170,18 @@ void MainWindow::appendSavedVideo(QString name) {
     savedList->scrollTo(index);
 }
 
+void MainWindow::playVideo(const QModelIndex &index) {
+    QString filename =Utilites::getDataPath() + "/" + listModel->itemFromIndex(index)->text() + ".avi";
+    //qDebug() << filename << "\n";
+    closeCamera();
+    capturer = new CaptureThread(filename, dataLock);
+    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
+    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
+    capturer->start();
+    mainStatusLabel->setText(QString("Playing video %1").arg(filename));
+}
+
 void MainWindow::populateSavedList() {
     QDir movieDir( Utilites::getDataPath());
     QStringList filters;
@@ -173,6 +196,7 @@ void MainWindow::populateSavedList() {
         listModel->setData(index, file.baseName(), Qt::DisplayRole);
         savedList->scrollTo(index);
     }
+    connect(savedList, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(playVideo(const QModelIndex &)));
 }
 
 

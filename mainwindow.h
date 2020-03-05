@@ -27,10 +27,12 @@ public:
 private slots:
     void cameraInfo();
     void openCamera();
+    void closeCamera();
     void updateFrame(cv::Mat*);
     void updateFPS(float fps);
     void recordingStartStop();
     void appendSavedVideo(QString name);
+    void playVideo(const QModelIndex &index);
 
 private:
     void populateSavedList();
@@ -53,7 +55,9 @@ private:
 
     QAction *cameraInfoAction;
     QAction *openCameraAction;
+    QAction *closeCameraAction;
     QAction *exitAction;
+
 
     QStandardItemModel *listModel;
 
