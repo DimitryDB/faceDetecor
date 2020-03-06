@@ -14,6 +14,11 @@ CaptureThread::CaptureThread(QString videoPath, QMutex *lock) : running(false), 
                     videoPath(videoPath), data_lock(lock), camera_lock(nullptr), fps(0.0), cap(nullptr), playFile(true),
                     frame_width(0), frame_height(0), video_saving_status(STOPPED), saved_video_name(""),
                     video_writer(nullptr)  {}
+CaptureThread::~CaptureThread() {
+    if (cap != nullptr)
+        delete cap;
+}
+
 void CaptureThread::run() {
     int wait;
     running = true;
@@ -24,7 +29,7 @@ void CaptureThread::run() {
     }
     else {
         camera_lock->tryLock(500);
-        cap = new cv::VideoCapture(cameraID);
+        cap = new cv::VideoCapture(cameraID, cv::CAP_DSHOW);
     }
     frame_width = cap->get(cv::CAP_PROP_FRAME_WIDTH);
     frame_height = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
@@ -61,7 +66,6 @@ void CaptureThread::run() {
     running = false;
     if (!playFile)
         camera_lock->unlock();
-    delete cap;
 }
 void CaptureThread::startSavingVideo(cv::Mat &firstFrame) {
     saved_video_name = Utilites::newSavedVideoName();

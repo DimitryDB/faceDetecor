@@ -17,7 +17,7 @@ public:
 
     CaptureThread(int camera, QMutex *lock, QMutex *cameraLock);
     CaptureThread(QString videoPath, QMutex *lock);
-    ~CaptureThread() override {}
+    ~CaptureThread() override;
 
     bool cameraLocked();
     void setRunning(bool run) {running = run;}
