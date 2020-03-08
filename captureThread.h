@@ -19,10 +19,11 @@ public:
     CaptureThread(QString videoPath, QMutex *lock);
     ~CaptureThread() override;
 
+    void setMotionDetectingStatus(bool status);
     bool cameraLocked();
     void setRunning(bool run) {running = run;}
     void setVideoSavingStatus(VideoSavingStatus status) {
-        video_saving_status = status; }
+        videoSavingStatus = status; }
 
 protected:
     void run() override;
@@ -35,22 +36,26 @@ signals:
 private:
     void startSavingVideo(cv::Mat &firstFrame);
     void stopSavingVideo();
+    void motionDetect(cv::Mat &frame);
 
     bool running;
     int cameraID;
     QString videoPath;
-    QMutex *data_lock;
-    QMutex *camera_lock;
+    QMutex *dataLock;
+    QMutex *cameraLock;
     cv::Mat frame;
     float fps;
     cv::VideoCapture *cap;
     bool playFile;
+    //motion detect
+    bool motionDetectingStatus;
+    bool motionDetected;
+    cv::Ptr<cv::BackgroundSubtractorMOG2> segmentor;
     //saving
-    int frame_width, frame_height;
-    VideoSavingStatus video_saving_status;
-    QString saved_video_name;
-    cv::VideoWriter *video_writer;
+    int frameWidth, frameHeight;
+    VideoSavingStatus videoSavingStatus;
+    QString savedVideoName;
+    cv::VideoWriter *videoWriter;
 };
-
 
 #endif // CAPTURETHREAD_H

@@ -10,7 +10,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QFileDialog>
-
+#include <QThread>
 #include "mainwindow.h"
 #include "utilites.h"
 
@@ -24,6 +24,9 @@ MainWindow::MainWindow(QWidget *parent) :
     camLock = new QMutex();
 }
 MainWindow::~MainWindow() {
+    // whait till thread done its job to avoid app crash
+    if(capturer != nullptr && capturer->isRunning())
+        QThread::msleep(1000);
     camLock->try_lock();
     camLock->unlock();
     dataLock->try_lock();
@@ -75,6 +78,7 @@ void MainWindow::initUi() {
     mainStatusLabel->setText("Watcher is Ready");
 
     connect(recordButton,SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
+    connect(monitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updateMonitorStatus(int)));
 
 
     createActions();
@@ -99,12 +103,7 @@ void MainWindow::createActions() {
     connect(openFileAction, SIGNAL(triggered(bool)), this, SLOT(openFile()));
 
 }
-void MainWindow::playCaptureSetup() {
-    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
-    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
-    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
-    capturer->start();
-}
+
 void MainWindow::cameraInfo() {
     QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
     QString info = QString("Available Camera:  \n");
@@ -122,6 +121,8 @@ void MainWindow::openCamera() {
     capturer = new CaptureThread(camID, dataLock, camLock);
     playCaptureSetup();
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
+    recordButton->setEnabled(true);
+    monitorCheckBox->setCheckState(Qt::Unchecked);
 }
 void MainWindow::openFile() {
     QFileDialog dialog(this);
@@ -137,6 +138,14 @@ void MainWindow::openFile() {
         playCaptureSetup();
         mainStatusLabel->setText(QString("Playing video %1").arg(filePaths.at(0)));
     }
+    recordButton->setEnabled(true);
+    monitorCheckBox->setCheckState(Qt::Unchecked);
+}
+void MainWindow::playCaptureSetup() {
+    connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
+    connect(capturer, &CaptureThread::fpsChanged, this, &MainWindow::updateFPS);
+    connect(capturer, &CaptureThread::videoSaved, this, &MainWindow::appendSavedVideo);
+    capturer->start();
 }
 void MainWindow::closeVideoStream() {
     if (capturer != nullptr) {
@@ -173,9 +182,11 @@ void MainWindow::recordingStartStop() {
     if (text == "Record" && capturer != nullptr) {
         capturer->setVideoSavingStatus(CaptureThread::STARTING);
         recordButton->setText("Stop Recording");
+        monitorCheckBox->setEnabled(false);
     } else if (text == "Stop Recording" && capturer != nullptr) {
         capturer->setVideoSavingStatus(CaptureThread::STOPPING);
         recordButton->setText("Record");
+        monitorCheckBox->setEnabled(true);
     }
 }
 void MainWindow::appendSavedVideo(QString name) {
@@ -212,7 +223,18 @@ void MainWindow::populateSavedList() {
     connect(savedList, SIGNAL(doubleClicked(const QModelIndex &)), this,
                                             SLOT(playVideoFromLib(const QModelIndex &)));
 }
-
+void MainWindow::updateMonitorStatus(int status) {
+    //qDebug() << "test";
+    if(capturer == nullptr)
+        return;
+    if(status) {
+        capturer->setMotionDetectingStatus(true);
+        recordButton->setEnabled(false);
+    } else {
+        capturer->setMotionDetectingStatus(false);
+        recordButton->setEnabled(true);
+    }
+}
 
 
 

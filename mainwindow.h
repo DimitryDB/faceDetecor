@@ -35,6 +35,7 @@ private slots:
     void recordingStartStop();
     void appendSavedVideo(QString name);
     void playVideoFromLib(const QModelIndex &index);
+    void updateMonitorStatus(int status);
 
 private:
     void populateSavedList();
