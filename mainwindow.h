@@ -36,6 +36,10 @@ private slots:
     void appendSavedVideo(QString name);
     void playVideoFromLib(const QModelIndex &index);
     void updateMonitorStatus(int status);
+    void updatefaceDetectingStatus(int status);
+    void zoomIn();
+    void zoomOut();
+    void resetTransform();
 
 private:
     void populateSavedList();
@@ -50,7 +54,10 @@ private:
     QGraphicsView *imageView;
 
     QCheckBox *monitorCheckBox;
+    QCheckBox *faceDetectingCheckBox;
     QPushButton *recordButton;
+
+    QToolBar *viewToolBar;
 
     QListView *savedList;
 
@@ -63,7 +70,9 @@ private:
     QAction *openFileAction;
     QAction *closeVideoStreamAction;
     QAction *exitAction;
-
+    QAction *zoomInAction;
+    QAction *zoomOutAction;
+    QAction *originalTransformAction;
 
     QStandardItemModel *listModel;
 

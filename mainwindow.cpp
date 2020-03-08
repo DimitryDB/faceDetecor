@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QThread>
+#include <QToolBar>
 #include "mainwindow.h"
 #include "utilites.h"
 
@@ -26,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow() {
     // whait till thread done its job to avoid app crash
     if(capturer != nullptr && capturer->isRunning())
-        QThread::msleep(1000);
+        QThread::msleep(2000);
     camLock->try_lock();
     camLock->unlock();
     dataLock->try_lock();
@@ -38,7 +39,7 @@ void MainWindow::initUi() {
     this->resize(1000, 800);
 
     fileMenu = menuBar()->addMenu("&File");
-
+    viewToolBar = addToolBar("View");
     QGridLayout *main_layout = new QGridLayout();
 
     imageScene = new QGraphicsScene(this);
@@ -50,11 +51,14 @@ void MainWindow::initUi() {
     monitorCheckBox = new QCheckBox(this);
     monitorCheckBox->setText("Monitor On/Off");
     tools_layout->addWidget(monitorCheckBox, 0, 0);
+    faceDetectingCheckBox = new QCheckBox(this);
+    faceDetectingCheckBox->setText("Face Detection On/Off");
+    tools_layout->addWidget(faceDetectingCheckBox, 0, 2, Qt::AlignRight);
 
     recordButton = new QPushButton(this);
     recordButton->setText("Record");
     tools_layout->addWidget(recordButton, 0, 1, Qt::AlignCenter);
-    tools_layout->addWidget(new QLabel(this), 0, 2);
+    //tools_layout->addWidget(new QLabel(this), 0, 2);
 
     savedList = new QListView(this);
     savedList->setViewMode(QListView::IconMode);
@@ -75,10 +79,11 @@ void MainWindow::initUi() {
     fpsStatusLabel = new QLabel(mainStatusBar);
     mainStatusBar->addPermanentWidget(fpsStatusLabel);
     mainStatusBar->addWidget(mainStatusLabel);
-    mainStatusLabel->setText("Watcher is Ready");
+    mainStatusLabel->setText("Ready");
 
     connect(recordButton,SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
     connect(monitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updateMonitorStatus(int)));
+    connect(faceDetectingCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updatefaceDetectingStatus(int)));
 
 
     createActions();
@@ -95,15 +100,24 @@ void MainWindow::createActions() {
     fileMenu->addAction(closeVideoStreamAction);
     exitAction = new QAction("E&xit" ,this);
     fileMenu->addAction(exitAction);
+    zoomOutAction = new QAction("Zoom Out" ,this);
+    viewToolBar->addAction(zoomOutAction);
+    zoomInAction = new QAction("Zoom In" ,this);
+    viewToolBar->addAction(zoomInAction);
+    originalTransformAction = new QAction("&Reset Transform" ,this);
+    viewToolBar->addAction(originalTransformAction);
+
 
     connect(cameraInfoAction, SIGNAL(triggered(bool)), this, SLOT(cameraInfo()));
     connect(exitAction, SIGNAL(triggered(bool)), QApplication::instance(), SLOT(quit()));
     connect(openCameraAction, SIGNAL(triggered(bool)), this, SLOT(openCamera()));
     connect(closeVideoStreamAction, SIGNAL(triggered(bool)), this, SLOT(closeVideoStream()));
     connect(openFileAction, SIGNAL(triggered(bool)), this, SLOT(openFile()));
+    connect(zoomInAction, SIGNAL(triggered(bool)), this, SLOT(zoomIn()));
+    connect(zoomOutAction, SIGNAL(triggered(bool)), this, SLOT(zoomOut()));
+    connect(originalTransformAction, SIGNAL(triggered(bool)), this, SLOT(resetTransform()));
 
 }
-
 void MainWindow::cameraInfo() {
     QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
     QString info = QString("Available Camera:  \n");
@@ -123,6 +137,7 @@ void MainWindow::openCamera() {
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
     recordButton->setEnabled(true);
     monitorCheckBox->setCheckState(Qt::Unchecked);
+    faceDetectingCheckBox->setCheckState(Qt::Unchecked);
 }
 void MainWindow::openFile() {
     QFileDialog dialog(this);
@@ -168,7 +183,7 @@ void MainWindow::updateFrame(cv::Mat *mat) {
                  static_cast<int>(currentFrame.step), QImage::Format_BGR888);
     QPixmap image = QPixmap::fromImage(frame);
     imageScene->clear();
-    imageView->resetTransform();
+    //imageView->resetTransform();
     imageScene->addPixmap(image);
     imageScene->update();
     imageView->setSceneRect(image.rect());
@@ -235,7 +250,24 @@ void MainWindow::updateMonitorStatus(int status) {
         recordButton->setEnabled(true);
     }
 }
-
+void MainWindow::updatefaceDetectingStatus(int status)
+{
+    if(capturer == nullptr)
+        return;
+    if(status)
+        capturer->setFaceDetectingStatus(true);
+    else
+        capturer->setFaceDetectingStatus(false);
+}
+void MainWindow::zoomIn() {
+    imageView->scale(1.2,1.2);
+}
+void MainWindow::zoomOut() {
+    imageView->scale(0.8,0.8);
+}
+void MainWindow::resetTransform() {
+    imageView->resetTransform();
+}
 
 
 

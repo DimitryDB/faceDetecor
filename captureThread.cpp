@@ -1,5 +1,6 @@
 #include <QElapsedTimer>
 #include <QDebug>
+#include <QApplication>
 #include <vector>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/photo.hpp>
@@ -9,16 +10,19 @@
 
 CaptureThread::CaptureThread(int camera, QMutex *lock, QMutex *cameraLock) : running(false), cameraID(camera),
                     videoPath(""), dataLock(lock), cameraLock(cameraLock), fps(0.0), cap(nullptr), playFile(false),
-                    motionDetectingStatus(false), frameWidth(0), frameHeight(0), videoSavingStatus(STOPPED),
-                    savedVideoName(""), videoWriter(nullptr) {}
+                    motionDetectingStatus(false), faceDetectingStatus(false), classifer(nullptr), frameWidth(0), frameHeight(0),
+                    videoSavingStatus(STOPPED), savedVideoName(""), videoWriter(nullptr) {}
 
 CaptureThread::CaptureThread(QString videoPath, QMutex *lock) : running(false), cameraID(-1),
                     videoPath(videoPath), dataLock(lock), cameraLock(nullptr), fps(0.0), cap(nullptr), playFile(true),
-                    motionDetectingStatus(false), frameWidth(0), frameHeight(0), videoSavingStatus(STOPPED),
-                    savedVideoName(""), videoWriter(nullptr)  {}
+                    motionDetectingStatus(false), faceDetectingStatus(false), classifer(nullptr), frameWidth(0), frameHeight(0),
+                    videoSavingStatus(STOPPED), savedVideoName(""), videoWriter(nullptr)  {}
 CaptureThread::~CaptureThread() {
     if (cap != nullptr)
         delete cap;
+    if (classifer != nullptr) {
+        delete classifer;
+    }
 }
 
 void CaptureThread::setMotionDetectingStatus(bool status) {
@@ -26,6 +30,9 @@ void CaptureThread::setMotionDetectingStatus(bool status) {
     motionDetected = false;
     if (videoSavingStatus != STOPPED)
         videoSavingStatus = STOPPING;
+}
+void CaptureThread::setFaceDetectingStatus(bool status) {
+    faceDetectingStatus = status;
 }
 void CaptureThread::run() {
     int wait;
@@ -44,26 +51,33 @@ void CaptureThread::run() {
     //qDebug() << "fps " << fps << "\n";
     //qDebug() << "width " << frameWidth << "height " << frameHeight << "\n";
     segmentor = cv::createBackgroundSubtractorMOG2(500, 16, true);
-    cv::Mat tmp_frame;
+    classifer = new cv::CascadeClassifier(OPENCV_DATA_DIR "haarcascades/haarcascade_frontalface_default.xml");
+    markDetector = cv::face::createFacemarkLBF();
+    QString modelData = QApplication::instance()->applicationDirPath() + "/data/lbfmodel.yaml";
+    //qDebug() << modelData;
+    markDetector->loadModel(modelData.toStdString());
+    cv::Mat tmpFrame;
     QElapsedTimer timer;
     while (running) {
         timer.start();
-        *cap >> tmp_frame;
-        if (tmp_frame.empty())
+        *cap >> tmpFrame;
+        if (tmpFrame.empty())
             break;
-        if(motionDetectingStatus) {
-            motionDetect(tmp_frame);
-        }
+        // detections
+        if(motionDetectingStatus)
+            motionDetect(tmpFrame);
+        if(faceDetectingStatus)
+            detectFaces(tmpFrame);
         // video recording
         if(videoSavingStatus == STARTING)
-            startSavingVideo(tmp_frame);
+            startSavingVideo(tmpFrame);
         if(videoSavingStatus == STARTED)
-            videoWriter->write(tmp_frame);
+            videoWriter->write(tmpFrame);
         if(videoSavingStatus == STOPPING)
             stopSavingVideo();
 
         dataLock->lock();
-        frame = tmp_frame;
+        frame = tmpFrame;
         dataLock->unlock();
         qint64 elapsed = timer.elapsed();
         if (playFile)
@@ -98,7 +112,6 @@ void CaptureThread::stopSavingVideo() {
     emit videoSaved(savedVideoName);
 }
 void CaptureThread::motionDetect(cv::Mat &frame) {
-
     cv::Mat fgmask;
     segmentor->apply(frame, fgmask);
     if (fgmask.empty())
@@ -127,6 +140,27 @@ void CaptureThread::motionDetect(cv::Mat &frame) {
         cv::rectangle(frame, rect, color, 1);
     }
 }
+void CaptureThread::detectFaces(cv::Mat &frame) {
+    std::vector<cv::Rect> faces;
+    cv::Mat grayFrame;
+    cv::cvtColor(frame, grayFrame, cv::COLOR_RGB2GRAY);
+    classifer->detectMultiScale(grayFrame, faces, 1.3, 5);
+    cv::Scalar color = cv::Scalar(0,255,0);
+    for (size_t i = 0; i < faces.size(); i++) {
+        cv::rectangle(frame, faces[i], color, 1);
+    }
+    std::vector<std::vector<cv::Point2f>> shapes;
+    if (markDetector->fit(frame,faces,shapes)) {
+        for (unsigned long i = 0; i < faces.size(); i++) {
+            for (unsigned long k = 0; k < shapes[i].size(); k++) {
+                //cv::circle(frame, shapes[i][k], 2, color, cv::FILLED);
+                QString index = QString("%1").arg(k);
+                cv::putText(frame, index.toStdString(), shapes[i][k], cv::FONT_HERSHEY_SIMPLEX, 0.25, color, 1);
+            }
+        }
+    }
+}
+
 
 
 

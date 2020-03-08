@@ -4,9 +4,11 @@
 #include <QThread>
 #include <QMutex>
 
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
-#include "opencv2/video/background_segm.hpp"
+#include <opencv2/video/background_segm.hpp>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/face/facemark.hpp>
 
 
 class CaptureThread : public QThread {
@@ -20,6 +22,7 @@ public:
     ~CaptureThread() override;
 
     void setMotionDetectingStatus(bool status);
+    void setFaceDetectingStatus(bool status);
     bool cameraLocked();
     void setRunning(bool run) {running = run;}
     void setVideoSavingStatus(VideoSavingStatus status) {
@@ -37,6 +40,7 @@ private:
     void startSavingVideo(cv::Mat &firstFrame);
     void stopSavingVideo();
     void motionDetect(cv::Mat &frame);
+    void detectFaces(cv::Mat &frame);
 
     bool running;
     int cameraID;
@@ -51,11 +55,16 @@ private:
     bool motionDetectingStatus;
     bool motionDetected;
     cv::Ptr<cv::BackgroundSubtractorMOG2> segmentor;
+    //face detect
+    bool faceDetectingStatus;
+    cv::CascadeClassifier *classifer;
+    cv::Ptr<cv::face::Facemark> markDetector;
     //saving
     int frameWidth, frameHeight;
     VideoSavingStatus videoSavingStatus;
     QString savedVideoName;
     cv::VideoWriter *videoWriter;
+
 };
 
 #endif // CAPTURETHREAD_H
