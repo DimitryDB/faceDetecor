@@ -6,6 +6,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT+= widgets
 
 CONFIG += c++11
 
+
 HEADERS += \
         captureThread.h \
         mainwindow.h \
@@ -15,6 +16,9 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
         utilites.cpp
+
+RESOURCES += \
+        images.qrc
 
 
 #OpenCV path
@@ -27,11 +31,12 @@ unix: !mac {
    }
 unix: mac {
          INCLUDEPATH += /path/to/opencv/include/opencv4
-         LIBS += -L/path/to/opencv/lib -lopencv_world -lopencv_imgcodecs
+         LIBS += -L/path/to/opencv/lib -lopencv_world
      }
 win32 {
        INCLUDEPATH += C:\opencv\build\include
        #LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347d
        LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347
    }
+
 

@@ -36,7 +36,7 @@ MainWindow::~MainWindow() {
     delete dataLock;
 }
 void MainWindow::initUi() {
-    this->resize(1000, 800);
+    this->resize(1000, 1000);
 
     fileMenu = menuBar()->addMenu("&File");
     viewToolBar = addToolBar("View");
@@ -51,14 +51,26 @@ void MainWindow::initUi() {
     monitorCheckBox = new QCheckBox(this);
     monitorCheckBox->setText("Monitor On/Off");
     tools_layout->addWidget(monitorCheckBox, 0, 0);
-    faceDetectingCheckBox = new QCheckBox(this);
-    faceDetectingCheckBox->setText("Face Detection On/Off");
-    tools_layout->addWidget(faceDetectingCheckBox, 0, 2, Qt::AlignRight);
+
 
     recordButton = new QPushButton(this);
     recordButton->setText("Record");
     tools_layout->addWidget(recordButton, 0, 1, Qt::AlignCenter);
-    //tools_layout->addWidget(new QLabel(this), 0, 2);
+    tools_layout->addWidget(new QLabel(this), 0, 2);
+
+    //overlays
+    QGridLayout *overlayLayout = new QGridLayout();
+    main_layout->addLayout(overlayLayout, 13, 0, 1, 1);
+    overlayLayout->addWidget(new QLabel("Overlays", this));
+    for (int i = 0; i < CaptureThread::OVERLAYS_COUNT; i++) {
+        overlayCheckboxes[i] = new QCheckBox(this);
+        overlayLayout->addWidget(overlayCheckboxes[i], 0, i + 1);
+        connect(overlayCheckboxes[i], SIGNAL(stateChanged(int)), this, SLOT(updateOverlay(int)));
+    }
+    overlayCheckboxes[0]->setText("Rectangle");
+    overlayCheckboxes[1]->setText("Points");
+    overlayCheckboxes[2]->setText("Glases");
+    overlayCheckboxes[3]->setText("Mouse");
 
     savedList = new QListView(this);
     savedList->setViewMode(QListView::IconMode);
@@ -67,7 +79,7 @@ void MainWindow::initUi() {
     savedList->setWrapping(false);
     listModel = new QStandardItemModel(this);
     savedList->setModel(listModel);
-    main_layout->addWidget(savedList, 13, 0, 4, 1);
+    main_layout->addWidget(savedList, 14, 0, 4, 1);
 
     QWidget *widget = new QWidget();
     widget->setLayout(main_layout);
@@ -83,7 +95,7 @@ void MainWindow::initUi() {
 
     connect(recordButton,SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
     connect(monitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updateMonitorStatus(int)));
-    connect(faceDetectingCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updatefaceDetectingStatus(int)));
+
 
 
     createActions();
@@ -137,7 +149,8 @@ void MainWindow::openCamera() {
     mainStatusLabel->setText(QString("Capturing Camera %1").arg(camID));
     recordButton->setEnabled(true);
     monitorCheckBox->setCheckState(Qt::Unchecked);
-    faceDetectingCheckBox->setCheckState(Qt::Unchecked);
+    for (int i = 0; i < CaptureThread::OVERLAYS_COUNT; i++)
+        overlayCheckboxes[i]->setCheckState(Qt::Unchecked);
 }
 void MainWindow::openFile() {
     QFileDialog dialog(this);
@@ -155,6 +168,8 @@ void MainWindow::openFile() {
     }
     recordButton->setEnabled(true);
     monitorCheckBox->setCheckState(Qt::Unchecked);
+    for (int i = 0; i < CaptureThread::OVERLAYS_COUNT; i++)
+        overlayCheckboxes[i]->setCheckState(Qt::Unchecked);
 }
 void MainWindow::playCaptureSetup() {
     connect(capturer, &CaptureThread::frameCaptured, this, &MainWindow::updateFrame);
@@ -250,15 +265,7 @@ void MainWindow::updateMonitorStatus(int status) {
         recordButton->setEnabled(true);
     }
 }
-void MainWindow::updatefaceDetectingStatus(int status)
-{
-    if(capturer == nullptr)
-        return;
-    if(status)
-        capturer->setFaceDetectingStatus(true);
-    else
-        capturer->setFaceDetectingStatus(false);
-}
+
 void MainWindow::zoomIn() {
     imageView->scale(1.2,1.2);
 }
@@ -267,6 +274,16 @@ void MainWindow::zoomOut() {
 }
 void MainWindow::resetTransform() {
     imageView->resetTransform();
+}
+void MainWindow::updateOverlay(int status) {
+    if(capturer == nullptr)
+        return;
+    QCheckBox *box = qobject_cast<QCheckBox*>(sender());
+    for (int i = 0; i < CaptureThread::OVERLAYS_COUNT; i++) {
+        if (overlayCheckboxes[i] == box) {
+            capturer->updateOverlayFlag(static_cast<CaptureThread::OverlayType>(i), status !=0);
+        }
+    }
 }
 
 
