@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <QImage>
-#include <cmath>
+
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/photo.hpp>
@@ -222,7 +222,7 @@ void CaptureThread::drawMouse(cv::Mat &frame, std::vector<cv::Point2f> &marks) {
 
     double angle = -std::atan((marks[16].y - marks[0].y) / (marks[16].x - marks[0].x));
     cv::Point2f center = cv::Point(tmp.cols/2, tmp.cols/2);
-    cv::Mat rotateMatrix = cv::getRotationMatrix2D(center, angle * 180/M_PI, 1.0);
+    cv::Mat rotateMatrix = cv::getRotationMatrix2D(center, angle * 180/3.14, 1.0);
 
     cv::Mat rotated;
     cv::warpAffine(tmp, rotated, rotateMatrix, tmp.size(),
