@@ -22,9 +22,10 @@ RESOURCES += \
 
 
 #OpenCV path
-DEFINES += OPENCV_DATA_DIR=\\\"/usr/local/share/opencv4/\\\"
+
 
 unix: !mac {
+       DEFINES += OPENCV_DATA_DIR=\\\"/usr/local/share/opencv4/\\\"
        INCLUDEPATH += /usr/local/include/opencv4
        LIBS += -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_videoio -lopencv_imgcodecs -lopencv_objdetect -lopencv_face
 
@@ -34,9 +35,10 @@ unix: mac {
          LIBS += -L/path/to/opencv/lib -lopencv_world
      }
 win32 {
-       INCLUDEPATH += C:\opencv\build\include
+       DEFINES += OPENCV_DATA_DIR=\\\"C:/opencv/etc/\\\"
+       INCLUDEPATH += C:\opencv\include
        #LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347d
-       LIBS += -lC:\opencv\build\x64\vc15\lib\opencv_world347
+       LIBS += -lC:\opencv\x64\vc15\lib\opencv_world420
    }
 
 
