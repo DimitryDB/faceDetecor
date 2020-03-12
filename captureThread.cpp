@@ -209,10 +209,12 @@ void CaptureThread::drawGlasses(cv::Mat &frame, std::vector<cv::Point2f> &marks)
     center = cv::Point((marks[45].x + marks[36].x) /2, (marks[45].y + marks[36].y) /2 );
     cv::Rect rec(center.x - rotated.cols/2, center.y - rotated.rows/2 , rotated.cols, rotated.rows);
     cv::threshold(rotated, mask, 100, 255, cv::THRESH_BINARY);
-    frame(rec) &= mask;
-    rotated = cv::Scalar(0, 0, 255);
-    rotated &= ~mask;
-    frame(rec) |= rotated;
+    if(rec.x >= 0 && rec.y >= 0 && rec.width + rec.x < frame.cols && rec.height + rec.y < frame.rows) {
+        frame(rec) &= mask;
+        rotated = cv::Scalar(0, 0, 255);
+        rotated &= ~mask;
+        frame(rec) |= rotated;
+    }
 }
 void CaptureThread::drawMouse(cv::Mat &frame, std::vector<cv::Point2f> &marks) {
     cv::Mat tmp;
@@ -230,7 +232,8 @@ void CaptureThread::drawMouse(cv::Mat &frame, std::vector<cv::Point2f> &marks) {
 
     center = cv::Point(marks[30].x, marks[30].y);
     cv::Rect rec(center.x - rotated.cols/2, center.y - rotated.rows/2 , rotated.cols, rotated.rows);
-    frame(rec) &= rotated;
+    if(rec.x >= 0 && rec.y >= 0 && rec.width + rec.x < frame.cols && rec.height + rec.y < frame.rows)
+        frame(rec) &= rotated;
 }
 
 
